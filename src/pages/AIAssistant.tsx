@@ -42,15 +42,17 @@ interface QueryForm {
 let anthropicService: AnthropicAIService | null = null
 
 const initializeAnthropicService = () => {
-  const apiKey = process.env.REACT_APP_ANTHROPIC_API_KEY
+  // In production, we use backend proxy so no API key needed on frontend
+  const isProduction = process.env.NODE_ENV === 'production'
+  const apiKey = isProduction ? '' : process.env.REACT_APP_ANTHROPIC_API_KEY
   
-  if (!apiKey) {
-    console.warn('⚠️ REACT_APP_ANTHROPIC_API_KEY not found in environment variables')
+  if (!isProduction && !apiKey) {
+    console.warn('⚠️ REACT_APP_ANTHROPIC_API_KEY not found in environment variables (development mode)')
     return false
   }
   
   try {
-    anthropicService = new AnthropicAIService(apiKey)
+    anthropicService = new AnthropicAIService(apiKey || '')
     console.log('✅ Anthropic AI Service initialized successfully')
     return true
   } catch (error) {
@@ -89,7 +91,9 @@ export default function AIAssistant() {
           console.error('API Key test failed:', error)
         }
       } else {
-        setApiKeyStatus('missing')
+        // In production with backend proxy, missing frontend API key is expected
+        const isProduction = process.env.NODE_ENV === 'production'
+        setApiKeyStatus(isProduction ? 'valid' : 'missing')
       }
     }
     
