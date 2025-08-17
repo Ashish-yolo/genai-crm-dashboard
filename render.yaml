@@ -1,10 +1,9 @@
 services:
-  # Backend API service
+  # Single service for both frontend and backend
   - type: web
-    name: genai-crm-backend
+    name: genai-crm-dashboard
     runtime: node
-    rootDir: ./server
-    buildCommand: npm install
+    buildCommand: npm install && npm run build
     startCommand: npm start
     envVars:
       - key: NODE_ENV
@@ -13,17 +12,3 @@ services:
         value: 10000
       - key: ANTHROPIC_API_KEY
         sync: false  # This will be set manually in Render dashboard
-      - key: FRONTEND_URL
-        value: https://genai-crm-dashboard.onrender.com  # Update with your frontend URL
-
-  # Static site for frontend (optional - you can also use Netlify)
-  - type: web
-    name: genai-crm-frontend
-    runtime: static
-    buildCommand: npm ci && npm run build
-    staticPublishPath: ./dist
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: REACT_APP_API_BASE_URL
-        value: https://genai-crm-backend.onrender.com  # Update with your backend URL

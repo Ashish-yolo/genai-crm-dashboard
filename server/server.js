@@ -136,10 +136,23 @@ app.get('/api/repositories', (req, res) => {
   res.json({ message: 'Repository management endpoint - to be implemented' });
 });
 
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({ error: 'Endpoint not found' });
-});
+// Serve static files from the React app build (if in production)
+if (process.env.NODE_ENV === 'production') {
+  const path = require('path');
+  
+  // Serve static files from the React app
+  app.use(express.static(path.join(__dirname, '..', 'dist')));
+  
+  // The "catchall" handler: send back React's index.html file for any non-API routes
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'dist', 'index.html'));
+  });
+} else {
+  // 404 handler for development
+  app.use('*', (req, res) => {
+    res.status(404).json({ error: 'Endpoint not found' });
+  });
+}
 
 // Error handler
 app.use((error, req, res, next) => {
