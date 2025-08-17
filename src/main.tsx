@@ -1,4 +1,5 @@
 import React from 'react'
+// @ts-ignore - Ignore TypeScript declaration issues for react-dom
 import ReactDOM from 'react-dom'
 import App from './App'
 import DebugApp from './DebugApp'
