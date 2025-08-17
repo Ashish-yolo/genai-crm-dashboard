@@ -49,13 +49,34 @@ export default function SignIn() {
   }
 
   const handleInputChange = (field: keyof SignInFormData, value: string) => {
-    setFormState(prev => ({
-      ...prev,
-      data: {
+    setFormState(prev => {
+      const newData = {
         ...prev.data,
         [field]: value,
-      },
-    }))
+      }
+      
+      // Validate immediately after updating data
+      const errors: Record<string, string> = {}
+      
+      if (!newData.email) {
+        errors.email = 'Email is required'
+      } else if (!/\S+@\S+\.\S+/.test(newData.email)) {
+        errors.email = 'Email is invalid'
+      }
+      
+      if (!newData.password) {
+        errors.password = 'Password is required'
+      } else if (newData.password.length < 6) {
+        errors.password = 'Password must be at least 6 characters'
+      }
+      
+      return {
+        ...prev,
+        data: newData,
+        errors,
+        isValid: Object.keys(errors).length === 0,
+      }
+    })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

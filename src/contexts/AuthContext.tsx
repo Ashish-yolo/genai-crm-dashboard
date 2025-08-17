@@ -70,18 +70,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }
 
   const signUp = async (email: string, password: string, name: string) => {
-    console.log('AuthContext signUp called with:', { email, name, passwordLength: password.length })
     try {
       setLoading(true)
-      console.log('Setting loading to true...')
       
       // Demo implementation - simulate a delay
       await new Promise(resolve => setTimeout(resolve, 1000))
       
-      console.log('SignUp process completed, showing success message...')
-      toast.success('Account created! Please sign in.')
+      // Log signup attempt for demo purposes
+      console.log('Demo signup for:', { email, name, passwordLength: password.length })
       
-      console.log('Navigating to sign in page...')
+      toast.success('Account created! Please sign in.')
       navigate('/signin')
     } catch (error) {
       console.error('Error in signUp:', error)
@@ -89,7 +87,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       toast.error(message)
       throw error
     } finally {
-      console.log('Setting loading to false...')
       setLoading(false)
     }
   }
