@@ -6,16 +6,88 @@ import ActivityFeed from '@/components/dashboard/ActivityFeed'
 import QuickActions from '@/components/dashboard/QuickActions'
 
 export default function Dashboard() {
-  const { data: dashboardMetrics, isLoading: metricsLoading } = useQuery({
+  const { data: dashboardMetrics, isLoading: metricsLoading, error: metricsError } = useQuery({
     queryKey: ['dashboard-metrics'],
     queryFn: () => api.getDashboardMetrics(),
+    retry: false, // Don't retry failed requests
   })
 
-  const { data: realtimeMetrics, isLoading: realtimeLoading } = useQuery({
+  const { data: realtimeMetrics, isLoading: realtimeLoading, error: realtimeError } = useQuery({
     queryKey: ['realtime-metrics'],
     queryFn: () => api.getRealTimeMetrics(),
     refetchInterval: 30000, // Refetch every 30 seconds
+    retry: false, // Don't retry failed requests
   })
+
+  // Mock data fallbacks for demo purposes
+  const mockDashboardMetrics = {
+    success: true,
+    data: {
+      overview: {
+        total_customers: 1234,
+        total_interactions: 5678,
+        total_ai_queries: 892,
+        avg_response_time: 2.3,
+        customer_satisfaction: 4.2,
+        resolution_rate: 0.87
+      },
+      trends: {
+        customer_growth: [],
+        interaction_volume: [],
+        ai_usage: [],
+        satisfaction_trend: []
+      },
+      performance: {
+        top_agents: [],
+        ai_metrics: {
+          total_queries: 892,
+          avg_confidence: 0.87,
+          cache_hit_rate: 0.65,
+          error_rate: 0.02
+        }
+      },
+      insights: {
+        peak_hours: [],
+        popular_channels: [],
+        sentiment_distribution: {
+          positive: 0.7,
+          neutral: 0.2,
+          negative: 0.1
+        },
+        escalation_rate: 0.15
+      }
+    }
+  }
+
+  const mockRealtimeMetrics = {
+    success: true,
+    data: [
+      {
+        id: '1',
+        name: 'Active Users',
+        value: 142,
+        change_percentage: 12,
+        trend: 'up' as const,
+        last_updated: new Date().toISOString()
+      },
+      {
+        id: '2',
+        name: 'Response Time',
+        value: 2.1,
+        change_percentage: -8.5,
+        trend: 'down' as const,
+        last_updated: new Date().toISOString()
+      },
+      {
+        id: '3',
+        name: 'Queue Length',
+        value: 5,
+        change_percentage: -37.5,
+        trend: 'down' as const,
+        last_updated: new Date().toISOString()
+      }
+    ]
+  }
 
   if (metricsLoading) {
     return (
@@ -34,8 +106,26 @@ export default function Dashboard() {
     )
   }
 
+  // Use mock data if API fails
+  const effectiveDashboardMetrics = dashboardMetrics || (metricsError ? mockDashboardMetrics : null)
+  const effectiveRealtimeMetrics = realtimeMetrics || (realtimeError ? mockRealtimeMetrics : null)
+
   return (
     <div className="space-y-6">
+      {/* Demo Mode Notice */}
+      {(metricsError || realtimeError) ? (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex">
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-blue-800">Demo Mode</h3>
+              <p className="mt-1 text-sm text-blue-700">
+                Displaying sample data. Connect your API backend for real metrics.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {/* Page Header */}
       <div className="md:flex md:items-center md:justify-between">
         <div className="min-w-0 flex-1">
@@ -53,13 +143,13 @@ export default function Dashboard() {
 
       {/* Metrics Overview */}
       <MetricsOverview 
-        data={dashboardMetrics?.data} 
+        data={effectiveDashboardMetrics?.data} 
         loading={metricsLoading}
       />
 
       {/* Real-time Metrics */}
       <RealtimeMetrics 
-        data={realtimeMetrics?.data} 
+        data={effectiveRealtimeMetrics?.data} 
         loading={realtimeLoading}
       />
 
