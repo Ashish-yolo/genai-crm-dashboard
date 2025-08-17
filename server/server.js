@@ -11,7 +11,7 @@ app.use(helmet());
 app.use(cors({
   origin: [
     'http://localhost:3000',
-    'https://genai-crm-dashboard.netlify.app',
+    'https://crm-x.netlify.app',
     process.env.FRONTEND_URL
   ].filter(Boolean),
   credentials: true
