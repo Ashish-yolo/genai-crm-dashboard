@@ -24,8 +24,9 @@ import {
 import { StatsCard } from '@/components/ui/StatsCard'
 import { FloatingLabelInput } from '@/components/ui/FloatingLabelInput'
 import { FloatingLabelTextarea } from '@/components/ui/FloatingLabelTextarea'
-import { ConfluenceMCPManager } from '@/services/confluence'
-import type { EnhancedAIResponse, CustomerQuery } from '@/services/confluence'
+import RepositoryContext from '@/components/ai/RepositoryContext'
+import AnthropicAIService from '@/services/anthropic'
+import type { EnhancedAIResponse } from '@/services/confluence'
 import toast from 'react-hot-toast'
 
 interface QueryForm {
@@ -36,62 +37,59 @@ interface QueryForm {
   priority: 'low' | 'medium' | 'high' | 'urgent'
 }
 
-interface ConfluenceStats {
-  total: number
-  byCategory: Record<string, number>
-  lastSync: Date | undefined
-  freshness: {
-    fresh: number
-    stale: number
-    outdated: number
-  }
-}
 
-// Initialize Confluence MCP Manager
-let confluenceManager: ConfluenceMCPManager | null = null
+// Initialize Anthropic AI Service
+let anthropicService: AnthropicAIService | null = null
 
-const initializeConfluenceManager = async () => {
-  if (!confluenceManager) {
-    const config = {
-      baseUrl: process.env.REACT_APP_CONFLUENCE_BASE_URL || 'https://company.atlassian.net',
-      username: process.env.REACT_APP_CONFLUENCE_USERNAME || '',
-      apiToken: process.env.REACT_APP_CONFLUENCE_API_TOKEN || '',
-      spaceKey: process.env.REACT_APP_CONFLUENCE_CS_SPACE_KEY || 'CS'
-    }
-    
-    confluenceManager = new ConfluenceMCPManager(config, process.env.REACT_APP_ANTHROPIC_API_KEY)
-    
-    try {
-      await confluenceManager.initialize()
-      console.log('✅ Confluence MCP Manager initialized successfully')
-      return true
-    } catch (error) {
-      console.error('❌ Failed to initialize Confluence MCP Manager:', error)
-      return false
-    }
+const initializeAnthropicService = () => {
+  const apiKey = process.env.REACT_APP_ANTHROPIC_API_KEY
+  
+  if (!apiKey) {
+    console.warn('⚠️ REACT_APP_ANTHROPIC_API_KEY not found in environment variables')
+    return false
   }
-  return true
+  
+  try {
+    anthropicService = new AnthropicAIService(apiKey)
+    console.log('✅ Anthropic AI Service initialized successfully')
+    return true
+  } catch (error) {
+    console.error('❌ Failed to initialize Anthropic AI Service:', error)
+    return false
+  }
 }
 
 export default function AIAssistant() {
   const [aiResponse, setAIResponse] = useState<EnhancedAIResponse | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [feedback, setFeedback] = useState<'accurate' | 'inaccurate' | null>(null)
-  const [confluenceStats, setConfluenceStats] = useState<ConfluenceStats | null>(null)
-  const [isConfluenceReady, setIsConfluenceReady] = useState(false)
-  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'error'>('idle')
+  const [isAnthropicReady, setIsAnthropicReady] = useState(false)
+  const [selectedRepositories, setSelectedRepositories] = useState<string[]>([])
+  const [availableRepositories, setAvailableRepositories] = useState<any[]>([])
+  const [apiKeyStatus, setApiKeyStatus] = useState<'checking' | 'valid' | 'invalid' | 'missing'>('checking')
   
   const { register, handleSubmit, formState: { errors }, reset } = useForm<QueryForm>()
 
-  // Initialize Confluence on component mount
+  // Initialize Anthropic on component mount
   useEffect(() => {
     const init = async () => {
-      const success = await initializeConfluenceManager()
-      setIsConfluenceReady(success)
+      const success = initializeAnthropicService()
+      setIsAnthropicReady(success)
       
-      if (success && confluenceManager) {
-        const stats = confluenceManager.getSOPStatistics()
-        setConfluenceStats(stats)
+      if (success && anthropicService) {
+        setApiKeyStatus('checking')
+        try {
+          const testResult = await anthropicService.testConnection()
+          setApiKeyStatus(testResult.success ? 'valid' : 'invalid')
+          if (!testResult.success) {
+            console.error('API Key validation failed:', testResult.error)
+          }
+        } catch (error) {
+          setApiKeyStatus('invalid')
+          console.error('API Key test failed:', error)
+        }
+      } else {
+        setApiKeyStatus('missing')
       }
     }
     
@@ -132,9 +130,19 @@ export default function AIAssistant() {
     { label: 'Technical Support', icon: FileText, color: 'orange' as const, category: 'technical' },
   ]
 
+  const handleRepositorySelect = (repositories: any[]) => {
+    setAvailableRepositories(repositories)
+    setSelectedRepositories(repositories.map(repo => repo.id))
+  }
+
   const onSubmit = async (data: QueryForm) => {
-    if (!isConfluenceReady || !confluenceManager) {
-      toast.error('Confluence integration not available. Using fallback AI.')
+    if (!isAnthropicReady || !anthropicService) {
+      toast.error('Anthropic API not available. Please check your API key configuration.')
+      return
+    }
+
+    if (apiKeyStatus !== 'valid') {
+      toast.error('Invalid or missing Anthropic API key. Please configure your environment variables.')
       return
     }
 
@@ -142,40 +150,41 @@ export default function AIAssistant() {
     setAIResponse(null)
     
     try {
-      const query: CustomerQuery = {
-        voc: data.customerVoice,
-        agentHelpText: data.agentContext,
-        ticketId: data.ticketId,
-        customerId: data.customerId,
-        priority: data.priority
+      const queryWithRepos = {
+        ...data,
+        selectedRepositories: availableRepositories
       }
 
-      console.log('🔍 Processing query with Confluence SOPs:', query)
-      const response = await confluenceManager.processCustomerQuery(query)
+      console.log('🔍 Processing query with Anthropic AI and selected repositories:', queryWithRepos)
+      
+      const response = await anthropicService.processQueryWithRepositories(queryWithRepos)
       
       setAIResponse(response)
-      toast.success(`AI response generated with ${response.totalSOPsConsulted} SOPs consulted`)
+      toast.success(`✨ AI response generated using Claude 3.5 Sonnet with ${availableRepositories.length} knowledge source${availableRepositories.length !== 1 ? 's' : ''}`)
     } catch (error) {
-      console.error('❌ Error processing query:', error)
-      toast.error('Failed to process query. Please try again.')
+      console.error('❌ Error processing query with Anthropic:', error)
+      toast.error('Failed to process query with AI. Please try again.')
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handleSync = async () => {
-    if (!confluenceManager) return
+  const handleApiKeyTest = async () => {
+    if (!anthropicService) return
     
-    setSyncStatus('syncing')
+    setApiKeyStatus('checking')
     try {
-      await confluenceManager.performIncrementalSync()
-      const stats = confluenceManager.getSOPStatistics()
-      setConfluenceStats(stats)
-      setSyncStatus('idle')
-      toast.success('SOPs synchronized successfully')
+      const testResult = await anthropicService.testConnection()
+      setApiKeyStatus(testResult.success ? 'valid' : 'invalid')
+      
+      if (testResult.success) {
+        toast.success('✅ Anthropic API connection successful')
+      } else {
+        toast.error(`❌ API connection failed: ${testResult.error}`)
+      }
     } catch (error) {
-      setSyncStatus('error')
-      toast.error('Failed to sync SOPs')
+      setApiKeyStatus('invalid')
+      toast.error('❌ Failed to test API connection')
     }
   }
 
@@ -194,17 +203,19 @@ export default function AIAssistant() {
   }
 
   const getStatusIcon = () => {
-    if (!isConfluenceReady) return <XCircle className="w-4 h-4 text-red-500" />
-    if (syncStatus === 'syncing') return <RefreshCw className="w-4 h-4 text-blue-500 animate-spin" />
-    if (syncStatus === 'error') return <AlertCircle className="w-4 h-4 text-yellow-500" />
-    return <CheckCircle className="w-4 h-4 text-green-500" />
+    if (apiKeyStatus === 'missing') return <XCircle className="w-4 h-4 text-red-500" />
+    if (apiKeyStatus === 'checking') return <RefreshCw className="w-4 h-4 text-blue-500 animate-spin" />
+    if (apiKeyStatus === 'invalid') return <AlertCircle className="w-4 h-4 text-red-500" />
+    if (apiKeyStatus === 'valid') return <CheckCircle className="w-4 h-4 text-green-500" />
+    return <AlertCircle className="w-4 h-4 text-gray-500" />
   }
 
   const getStatusText = () => {
-    if (!isConfluenceReady) return 'Confluence Disconnected'
-    if (syncStatus === 'syncing') return 'Syncing SOPs...'
-    if (syncStatus === 'error') return 'Sync Error'
-    return 'Confluence Connected'
+    if (apiKeyStatus === 'missing') return 'API Key Missing'
+    if (apiKeyStatus === 'checking') return 'Testing API Key...'
+    if (apiKeyStatus === 'invalid') return 'API Key Invalid'
+    if (apiKeyStatus === 'valid') return 'Anthropic Connected'
+    return 'Unknown Status'
   }
 
   return (
@@ -220,32 +231,43 @@ export default function AIAssistant() {
             AI Assistant Dashboard
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            AI-powered customer support with live Confluence SOPs
+            Claude 3.5 Sonnet AI with integrated knowledge repositories
           </p>
         </div>
         <div className="flex items-center space-x-4">
-          {/* Confluence Status */}
+          {/* Anthropic API Status */}
           <div className="flex items-center space-x-2 bg-gray-50 dark:bg-gray-800 px-4 py-2 rounded-full">
             {getStatusIcon()}
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
               {getStatusText()}
             </span>
-            {isConfluenceReady && (
-              <button
-                onClick={handleSync}
-                disabled={syncStatus === 'syncing'}
-                className="ml-2 p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"
-              >
-                <RefreshCw className={`w-3 h-3 ${syncStatus === 'syncing' ? 'animate-spin' : ''}`} />
-              </button>
-            )}
+            <button
+              onClick={handleApiKeyTest}
+              disabled={apiKeyStatus === 'checking'}
+              className="ml-2 p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded disabled:opacity-50"
+              title="Test API Connection"
+            >
+              <RefreshCw className={`w-3 h-3 ${apiKeyStatus === 'checking' ? 'animate-spin' : ''}`} />
+            </button>
           </div>
           
           {/* AI Model Status */}
-          <div className="flex items-center space-x-2 bg-green-50 dark:bg-green-900/20 px-4 py-2 rounded-full">
-            <Sparkles className="w-4 h-4 text-green-600 dark:text-green-400" />
-            <span className="text-sm font-medium text-green-700 dark:text-green-300">
-              Claude-3.5 + Confluence SOPs
+          <div className={`flex items-center space-x-2 px-4 py-2 rounded-full ${
+            apiKeyStatus === 'valid' 
+              ? 'bg-green-50 dark:bg-green-900/20' 
+              : 'bg-yellow-50 dark:bg-yellow-900/20'
+          }`}>
+            <Sparkles className={`w-4 h-4 ${
+              apiKeyStatus === 'valid' 
+                ? 'text-green-600 dark:text-green-400' 
+                : 'text-yellow-600 dark:text-yellow-400'
+            }`} />
+            <span className={`text-sm font-medium ${
+              apiKeyStatus === 'valid' 
+                ? 'text-green-700 dark:text-green-300' 
+                : 'text-yellow-700 dark:text-yellow-300'
+            }`}>
+              {apiKeyStatus === 'valid' ? 'Claude 3.5 Sonnet + Repositories' : 'Claude 3.5 Sonnet (Demo Mode)'}
             </span>
           </div>
         </div>
@@ -266,9 +288,9 @@ export default function AIAssistant() {
           color="blue"
         />
         <StatsCard
-          title="SOPs Available"
-          value={confluenceStats?.total?.toString() || '0'}
-          change={confluenceStats ? `${confluenceStats.freshness.fresh} fresh` : 'Loading...'}
+          title="Knowledge Sources"
+          value={availableRepositories.length.toString()}
+          change={`${selectedRepositories.length} selected`}
           icon={BookOpen}
           color="green"
         />
@@ -288,8 +310,37 @@ export default function AIAssistant() {
         />
       </motion.div>
 
-      {/* SOP Categories Overview */}
-      {confluenceStats && (
+      {/* API Key Configuration Notice */}
+      {apiKeyStatus !== 'valid' && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-yellow-50 dark:bg-yellow-900/20 rounded-xl p-6 shadow-sm border border-yellow-200 dark:border-yellow-800"
+        >
+          <h3 className="text-lg font-semibold text-yellow-900 dark:text-yellow-100 mb-4 flex items-center">
+            <AlertCircle className="w-5 h-5 mr-2 text-yellow-600" />
+            Anthropic API Configuration Required
+          </h3>
+          <div className="text-yellow-800 dark:text-yellow-200">
+            <p className="mb-3">
+              To use real AI-powered responses, you need to configure your Anthropic API key:
+            </p>
+            <ol className="list-decimal list-inside space-y-2 text-sm">
+              <li>Get your API key from <a href="https://console.anthropic.com/" target="_blank" rel="noopener noreferrer" className="underline">console.anthropic.com</a></li>
+              <li>Create a <code className="bg-yellow-100 dark:bg-yellow-800 px-1 rounded">.env</code> file in your project root</li>
+              <li>Add: <code className="bg-yellow-100 dark:bg-yellow-800 px-1 rounded">REACT_APP_ANTHROPIC_API_KEY=your_api_key_here</code></li>
+              <li>Restart the development server</li>
+            </ol>
+            <p className="mt-3 text-sm">
+              Until configured, the system will operate in demo mode with simulated responses.
+            </p>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Repository Overview */}
+      {availableRepositories.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -298,18 +349,22 @@ export default function AIAssistant() {
         >
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
             <BookOpen className="w-5 h-5 mr-2 text-blue-500" />
-            Available SOP Categories
+            Connected Knowledge Sources ({availableRepositories.length})
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {Object.entries(confluenceStats.byCategory).map(([category, count]) => (
-              <div key={category} className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                <div className="text-2xl font-bold text-gray-900 dark:text-white">{count}</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400 capitalize">{category}</div>
+            {availableRepositories.map((repo) => (
+              <div key={repo.id} className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <div className="text-lg font-bold text-gray-900 dark:text-white">{repo.name}</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400 capitalize">{repo.type}</div>
+                <div className={`text-xs mt-1 px-2 py-1 rounded-full ${
+                  selectedRepositories.includes(repo.id) 
+                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' 
+                    : 'bg-gray-100 text-gray-600 dark:bg-gray-600 dark:text-gray-300'
+                }`}>
+                  {selectedRepositories.includes(repo.id) ? 'Selected' : 'Available'}
+                </div>
               </div>
             ))}
-          </div>
-          <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">
-            Last sync: {confluenceStats.lastSync?.toLocaleString() || 'Never'}
           </div>
         </motion.div>
       )}
@@ -377,9 +432,17 @@ export default function AIAssistant() {
               </select>
             </div>
 
+            {/* Repository Context Selection */}
+            <div className="border-t border-gray-200 dark:border-gray-600 pt-6">
+              <RepositoryContext
+                onRepositorySelect={handleRepositorySelect}
+                selectedRepositories={selectedRepositories}
+              />
+            </div>
+
             <motion.button
               type="submit"
-              disabled={isLoading || !isConfluenceReady}
+              disabled={isLoading}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"

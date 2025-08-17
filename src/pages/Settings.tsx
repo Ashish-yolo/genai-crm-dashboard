@@ -8,15 +8,19 @@ import {
   Settings as SettingsIcon, 
   Plus, 
   AlertCircle,
-  Trash2 
+  Trash2,
+  Database,
+  FileText
 } from 'lucide-react'
+import RepositoryModal from '@/components/repository/RepositoryModal'
 
 interface Repository {
   id: string
   name: string
-  type: 'confluence' | 'github' | 'gitlab'
-  url: string
+  type: 'confluence' | 'github' | 'gitlab' | 'database' | 'file_upload'
+  config: any
   status: 'connected' | 'disconnected' | 'error'
+  createdAt: string
 }
 
 export default function Settings() {
@@ -25,30 +29,47 @@ export default function Settings() {
       id: '1',
       name: 'Company SOPs',
       type: 'confluence',
-      url: 'https://company.atlassian.net/wiki',
-      status: 'connected'
+      config: {
+        baseUrl: 'https://company.atlassian.net/wiki',
+        spaceKey: 'SUPPORT'
+      },
+      status: 'connected',
+      createdAt: '2024-01-15T10:00:00Z'
     },
     {
       id: '2', 
       name: 'Documentation Repo',
       type: 'github',
-      url: 'https://github.com/company/docs',
-      status: 'disconnected'
+      config: {
+        repoUrl: 'https://github.com/company/docs',
+        branch: 'main'
+      },
+      status: 'disconnected',
+      createdAt: '2024-01-10T15:30:00Z'
+    },
+    {
+      id: '3',
+      name: 'Customer Database',
+      type: 'database',
+      config: {
+        type: 'postgresql',
+        host: 'localhost',
+        database: 'crm_db'
+      },
+      status: 'connected',
+      createdAt: '2024-01-20T09:15:00Z'
     }
   ])
 
-  const [showAddForm, setShowAddForm] = useState(false)
-  const [newRepo, setNewRepo] = useState({
-    name: '',
-    type: 'confluence' as const,
-    url: ''
-  })
+  const [showModal, setShowModal] = useState(false)
 
   const getIcon = (type: string) => {
     switch (type) {
       case 'confluence': return <Book className="w-5 h-5" />
       case 'github': return <Github className="w-5 h-5" />
       case 'gitlab': return <GitBranch className="w-5 h-5" />
+      case 'database': return <Database className="w-5 h-5" />
+      case 'file_upload': return <FileText className="w-5 h-5" />
       default: return <SettingsIcon className="w-5 h-5" />
     }
   }
@@ -62,21 +83,37 @@ export default function Settings() {
     }
   }
 
-  const handleAddRepository = () => {
-    if (newRepo.name && newRepo.url) {
-      const repo: Repository = {
-        id: Date.now().toString(),
-        ...newRepo,
-        status: 'disconnected'
-      }
-      setRepositories([...repositories, repo])
-      setNewRepo({ name: '', type: 'confluence', url: '' })
-      setShowAddForm(false)
-    }
+  const handleAddRepository = (repository: Repository) => {
+    const updatedRepos = [...repositories, repository]
+    setRepositories(updatedRepos)
+    
+    // Save to localStorage so AI Assistant can access them
+    localStorage.setItem('repositories', JSON.stringify(updatedRepos))
   }
 
   const handleDeleteRepository = (id: string) => {
-    setRepositories(repositories.filter(repo => repo.id !== id))
+    const updatedRepos = repositories.filter(repo => repo.id !== id)
+    setRepositories(updatedRepos)
+    
+    // Update localStorage
+    localStorage.setItem('repositories', JSON.stringify(updatedRepos))
+  }
+
+
+  const getRepositoryDetails = (repo: Repository) => {
+    switch (repo.type) {
+      case 'confluence':
+        return `${repo.config.baseUrl}${repo.config.spaceKey ? ` | ${repo.config.spaceKey}` : ''}`
+      case 'github':
+      case 'gitlab':
+        return `${repo.config.repoUrl} | ${repo.config.branch || 'main'}`
+      case 'database':
+        return `${repo.config.type} | ${repo.config.host}${repo.config.database ? `/${repo.config.database}` : ''}`
+      case 'file_upload':
+        return `${repo.config.files?.length || 0} files uploaded`
+      default:
+        return 'Configuration details'
+    }
   }
 
   return (
@@ -104,7 +141,7 @@ export default function Settings() {
             </p>
           </div>
           <button
-            onClick={() => setShowAddForm(true)}
+            onClick={() => setShowModal(true)}
             className="btn-primary btn-md flex items-center space-x-2"
           >
             <Plus className="w-4 h-4" />
@@ -129,7 +166,7 @@ export default function Settings() {
                   <h3 className="font-medium text-gray-900 dark:text-white">
                     {repo.name}
                   </h3>
-                  <p className="text-sm text-gray-500">{repo.url}</p>
+                  <p className="text-sm text-gray-500">{getRepositoryDetails(repo)}</p>
                 </div>
               </div>
               <div className="flex items-center space-x-3">
@@ -147,64 +184,6 @@ export default function Settings() {
           ))}
         </div>
 
-        {/* Add Repository Form */}
-        {showAddForm && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            className="mt-6 p-4 border border-gray-200 rounded-lg bg-gray-50"
-          >
-            <h3 className="font-medium text-gray-900 mb-4">Add New Repository</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="label">Repository Name</label>
-                <input
-                  type="text"
-                  value={newRepo.name}
-                  onChange={(e) => setNewRepo({ ...newRepo, name: e.target.value })}
-                  className="input"
-                  placeholder="e.g., Company SOPs"
-                />
-              </div>
-              <div>
-                <label className="label">Repository Type</label>
-                <select
-                  value={newRepo.type}
-                  onChange={(e) => setNewRepo({ ...newRepo, type: e.target.value as any })}
-                  className="input"
-                >
-                  <option value="confluence">Confluence</option>
-                  <option value="github">GitHub</option>
-                  <option value="gitlab">GitLab</option>
-                </select>
-              </div>
-              <div>
-                <label className="label">Repository URL</label>
-                <input
-                  type="url"
-                  value={newRepo.url}
-                  onChange={(e) => setNewRepo({ ...newRepo, url: e.target.value })}
-                  className="input"
-                  placeholder="https://..."
-                />
-              </div>
-              <div className="flex space-x-3">
-                <button
-                  onClick={handleAddRepository}
-                  className="btn-primary btn-md"
-                >
-                  Add Repository
-                </button>
-                <button
-                  onClick={() => setShowAddForm(false)}
-                  className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
       </div>
 
       {/* Demo Notice */}
@@ -220,6 +199,13 @@ export default function Settings() {
           </div>
         </div>
       </div>
+
+      {/* Repository Modal */}
+      <RepositoryModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        onSave={handleAddRepository}
+      />
     </div>
   )
 }
