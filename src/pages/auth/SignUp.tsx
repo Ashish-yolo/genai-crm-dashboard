@@ -64,26 +64,67 @@ export default function SignUp() {
   }
 
   const handleInputChange = (field: keyof SignUpFormData, value: string) => {
-    setFormState(prev => ({
-      ...prev,
-      data: {
+    setFormState(prev => {
+      const newData = {
         ...prev.data,
         [field]: value,
-      },
-    }))
+      }
+      
+      // Validate immediately after updating data
+      const errors: Record<string, string> = {}
+      
+      if (!newData.name) {
+        errors.name = 'Name is required'
+      } else if (newData.name.length < 2) {
+        errors.name = 'Name must be at least 2 characters'
+      }
+      
+      if (!newData.email) {
+        errors.email = 'Email is required'
+      } else if (!/\S+@\S+\.\S+/.test(newData.email)) {
+        errors.email = 'Email is invalid'
+      }
+      
+      if (!newData.password) {
+        errors.password = 'Password is required'
+      } else if (newData.password.length < 8) {
+        errors.password = 'Password must be at least 8 characters'
+      } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(newData.password)) {
+        errors.password = 'Password must contain uppercase, lowercase, and number'
+      }
+      
+      if (!newData.confirmPassword) {
+        errors.confirmPassword = 'Please confirm your password'
+      } else if (newData.password !== newData.confirmPassword) {
+        errors.confirmPassword = 'Passwords do not match'
+      }
+      
+      return {
+        ...prev,
+        data: newData,
+        errors,
+        isValid: Object.keys(errors).length === 0,
+      }
+    })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log('Form submitted!')
+    console.log('Form state:', formState)
     
     if (!validateForm()) {
+      console.log('Form validation failed')
       return
     }
 
+    console.log('Form validation passed, starting signup...')
     setFormState(prev => ({ ...prev, isSubmitting: true }))
 
     try {
+      console.log('Calling signUp function...')
       await signUp(formState.data.email, formState.data.password, formState.data.name)
+      console.log('SignUp completed successfully')
       // Navigation is handled by AuthContext
     } catch (error) {
       console.error('Sign up error:', error)
@@ -203,7 +244,7 @@ export default function SignUp() {
               name="agree-terms"
               type="checkbox"
               className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              required
+              defaultChecked
             />
             <label htmlFor="agree-terms" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">
               I agree to the{' '}

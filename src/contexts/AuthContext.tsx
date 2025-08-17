@@ -33,8 +33,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
-  // For demo purposes, make it not authenticated initially so we can see the SignIn page
-  const isAuthenticated = false
+  // Check if user is authenticated based on session
+  const isAuthenticated = !!(user && session)
 
   const signIn = async (email: string, _password: string) => {
     try {
@@ -69,17 +69,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }
 
-  const signUp = async (_email: string, _password: string, _name: string) => {
+  const signUp = async (email: string, password: string, name: string) => {
+    console.log('AuthContext signUp called with:', { email, name, passwordLength: password.length })
     try {
       setLoading(true)
-      // Demo implementation
+      console.log('Setting loading to true...')
+      
+      // Demo implementation - simulate a delay
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      console.log('SignUp process completed, showing success message...')
       toast.success('Account created! Please sign in.')
+      
+      console.log('Navigating to sign in page...')
       navigate('/signin')
     } catch (error) {
+      console.error('Error in signUp:', error)
       const message = error instanceof Error ? error.message : 'Failed to create account'
       toast.error(message)
       throw error
     } finally {
+      console.log('Setting loading to false...')
       setLoading(false)
     }
   }
