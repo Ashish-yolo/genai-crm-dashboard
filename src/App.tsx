@@ -1,6 +1,9 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+// Import React Query DevTools only in development
+const ReactQueryDevtools = process.env.NODE_ENV === 'development' 
+  ? require('@tanstack/react-query-devtools').ReactQueryDevtools 
+  : () => null
 import { HelmetProvider } from 'react-helmet-async'
 import { Toaster } from 'react-hot-toast'
 
