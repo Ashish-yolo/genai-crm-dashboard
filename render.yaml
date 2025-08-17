@@ -19,8 +19,10 @@ services:
   - type: web
     name: genai-crm-frontend
     runtime: static
-    buildCommand: npm install && npm run build
+    buildCommand: npm ci && npm run build
     staticPublishPath: ./dist
     envVars:
+      - key: NODE_ENV
+        value: production
       - key: REACT_APP_API_BASE_URL
         value: https://genai-crm-backend.onrender.com  # Update with your backend URL
