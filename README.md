@@ -1,16 +1,17 @@
 # GenAI CRM Dashboard
 
-A modern React TypeScript dashboard for the GenAI CRM system with AI-powered customer service enhancement capabilities.
+A modern CRM dashboard powered by AI with integrated repository management for Confluence, GitHub, and other knowledge sources. This application provides intelligent customer support responses based on your company's SOPs and documentation.
 
-## Features
+## Key Features
 
-- **Authentication & Authorization** - Secure user management with Supabase Auth
-- **Real-time Dashboard** - Live metrics and KPIs with automatic updates
-- **AI Chat Interface** - Interactive AI assistant for customer service support
+- **AI-Powered Customer Support** - Intelligent responses based on your organization's SOPs and documentation
+- **Repository Integration** - Connect to Confluence, GitHub, GitLab, and other knowledge sources
+- **Real-time Data Sync** - Automatic synchronization with your knowledge repositories
+- **Semantic Search** - Advanced search capabilities across all connected repositories
+- **SOP Discovery & Indexing** - Automatically identify and index Standard Operating Procedures
 - **Customer Management** - Comprehensive customer database and interaction tracking
 - **Analytics & Reporting** - Advanced analytics with visualization charts
-- **Responsive Design** - Mobile-first design with dark/light theme support
-- **Modern UI** - Built with TailwindCSS and Headless UI components
+- **Modern UI** - Clean, responsive interface built with React and Tailwind CSS
 
 ## Tech Stack
 
@@ -48,11 +49,17 @@ npm install
 cp .env.example .env
 ```
 
-Edit `.env` with your Supabase credentials:
+Edit `.env` with your configuration:
 ```env
+# Supabase Configuration (Optional - for advanced features)
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your_anon_key_here
-VITE_API_BASE_URL=http://localhost:3001/api
+
+# API Configuration (Optional)
+VITE_API_BASE_URL=your-api-endpoint
+
+# Debug Mode (Optional)
+VITE_DEBUG_MODE=false
 ```
 
 4. Start the development server:
@@ -77,54 +84,87 @@ src/
 ├── components/          # Reusable UI components
 │   ├── auth/           # Authentication components
 │   ├── dashboard/      # Dashboard-specific components
-│   └── layout/         # Layout components
+│   ├── layout/         # Layout components
+│   └── repository/     # Repository management components
 ├── contexts/           # React contexts
 ├── pages/              # Page components
-├── services/           # API services
+├── services/           # API services and integrations
+│   ├── confluence/     # Confluence API integration
+│   ├── repository/     # Repository management
+│   ├── ai/            # AI processing services
+│   └── search/        # Search engine services
 ├── types/              # TypeScript type definitions
+├── hooks/              # Custom React hooks
+├── utils/              # Utility functions
 ├── App.tsx             # Main app component
 └── main.tsx           # App entry point
 ```
 
-## Key Components
+## Repository Integration
 
-### Authentication System
-- `AuthProvider` - Authentication context with Supabase integration
-- `ProtectedRoute` - Route guard for authenticated pages
-- `PublicRoute` - Route guard for public pages
+The application supports connecting to various repository types to power the AI engine with your organization's knowledge:
 
-### Dashboard Layout
-- `DashboardLayout` - Main layout with sidebar and navigation
-- `Sidebar` - Navigation sidebar with routing
-- `TopNavigation` - Top navigation bar with user menu
+### Confluence Integration
+- **Base URL**: Your Confluence instance URL (e.g., `https://company.atlassian.net/wiki`)
+- **Username**: Your Confluence username or email
+- **API Token**: Generate from Confluence Account Settings > Security > API tokens
+- **Space Key**: The space containing your SOPs and documentation
 
-### Dashboard Components
-- `MetricsOverview` - KPI cards with trend indicators
-- `RealtimeMetrics` - Live updating metrics display
-- `ActivityFeed` - Recent activity timeline
-- `QuickActions` - Quick action dropdown menu
+### GitHub Integration
+- **Repository URL**: Full GitHub repository URL
+- **Access Token**: Personal access token with `repo` permissions
+- **Branch**: Target branch (default: main)
+- **Path Filter**: Optional path to specific documentation folders
 
-### AI Chat Interface
-- Interactive chat with AI assistant
-- Customer context integration
-- Response suggestions
-- Conversation management
+### GitLab Integration
+- **Project URL**: GitLab project URL
+- **Access Token**: Project or personal access token
+- **Branch**: Target branch (default: main)
 
-## Configuration
+## AI-Powered Features
 
-### Environment Variables
+### SOP Discovery
+- Automatically identifies Standard Operating Procedures
+- Extracts and indexes documentation content
+- Creates searchable knowledge base
 
-- `VITE_SUPABASE_URL` - Your Supabase project URL
-- `VITE_SUPABASE_ANON_KEY` - Your Supabase anonymous key
-- `VITE_API_BASE_URL` - Backend API base URL
+### Intelligent Responses
+- Context-aware customer support responses
+- Draws from your organization's SOPs
+- Semantic search across all connected repositories
 
-### Theme Configuration
+### Real-time Sync
+- Monitors repository changes
+- Updates knowledge base automatically
+- Maintains fresh, current information
 
-The app supports light/dark/system themes with customizable colors:
-- Primary colors for branding
-- Accent colors for highlights
-- Font family selection
-- Custom CSS properties
+## Getting Started
+
+### Initial Setup
+
+1. **Launch the Application**
+   ```bash
+   npm run dev
+   ```
+
+2. **Add Your First Repository**
+   - Navigate to the Settings page
+   - Click "Add Repository"
+   - Choose your repository type (Confluence, GitHub, GitLab)
+   - Enter your credentials and configuration
+   - Test the connection
+
+3. **Start Using AI Support**
+   - Go to the AI Chat interface
+   - Ask questions about customer support scenarios
+   - The AI will respond based on your connected SOPs
+
+### Security & Credentials
+
+- All credentials are stored securely in encrypted browser storage
+- No credentials are transmitted to external services
+- Repository connections use HTTPS/SSL encryption
+- You can remove or update credentials at any time
 
 ## Deployment
 
@@ -150,38 +190,54 @@ npm run build
 
 2. Upload the `dist/` folder to your hosting provider
 
-## API Integration
+## Troubleshooting
 
-The dashboard integrates with the GenAI CRM API backend for:
+### Common Issues
 
-- User authentication via Supabase Auth
-- Customer data management
-- AI query processing
-- Analytics and reporting
-- Real-time metrics
+**Repository Connection Fails**
+- Verify credentials are correct
+- Check that the repository/space exists
+- Ensure API tokens have proper permissions
+- Test network connectivity to the service
 
-Ensure the backend API is running and accessible at the configured `VITE_API_BASE_URL`.
+**No SOPs Found**
+- Check that your repository contains documentation
+- Verify the space key or path filters are correct
+- Ensure documents are publicly accessible or you have proper permissions
+
+**Build or Deployment Issues**
+- Ensure Node.js version is 18 or higher
+- Delete `node_modules` and run `npm install` again
+- Check for TypeScript errors with `npm run type-check`
+- Verify all environment variables are set correctly
+
+**Styling Not Loading**
+- Clear browser cache and hard refresh
+- Check browser console for CSS loading errors
+- Verify Tailwind CSS is properly configured
 
 ## Development
 
-### Adding New Pages
+### Adding New Repository Types
 
-1. Create page component in `src/pages/`
-2. Add route in `src/App.tsx`
-3. Update navigation in `src/components/layout/Sidebar.tsx`
+1. Create a new service class in `src/services/`
+2. Implement the `RepositoryConnector` interface
+3. Add the connector to `RepositoryManager`
+4. Update the UI components to support the new type
 
-### Adding New API Endpoints
+### Customizing AI Responses
 
-1. Add types in `src/types/index.ts`
-2. Add methods in `src/services/api.ts`
-3. Use with TanStack Query in components
+1. Modify the AI processing logic in `src/services/ai/`
+2. Update search algorithms in `src/services/search/`
+3. Customize SOP detection patterns
+4. Configure response templates
 
-### Styling Guidelines
+### Extending Search Capabilities
 
-- Use TailwindCSS utility classes
-- Follow the established color scheme
-- Use semantic class names for custom components
-- Maintain dark mode compatibility
+1. Add new search providers in `src/services/search/`
+2. Implement custom indexing strategies
+3. Configure semantic search parameters
+4. Add new content extraction methods
 
 ## Contributing
 
