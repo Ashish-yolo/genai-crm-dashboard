@@ -1,5 +1,5 @@
 import React from 'react'
-import { createRoot } from 'react-dom/client'
+import ReactDOM from 'react-dom'
 import App from './App'
 import DebugApp from './DebugApp'
 import './index.css'
@@ -15,14 +15,13 @@ try {
   console.log('Root element found:', rootElement)
   
   if (rootElement) {
-    console.log('Creating React root...')
-    const root = createRoot(rootElement)
-    console.log('React root created, rendering app...')
+    console.log('Rendering React app...')
     
-    root.render(
+    ReactDOM.render(
       <React.StrictMode>
         {useDebugMode ? <DebugApp /> : <App />}
       </React.StrictMode>,
+      rootElement
     )
     
     console.log('✅ React app rendered successfully!')
