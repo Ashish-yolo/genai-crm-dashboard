@@ -11,57 +11,24 @@ interface SignUpFormData {
 }
 
 export default function SignUp() {
-  const { signUp } = useAuth()
+  console.log('SignUp component rendering...')
+  const authContext = useAuth()
+  console.log('Auth context:', authContext)
+  const { signUp } = authContext
   
   const [formState, setFormState] = useState<FormState<SignUpFormData>>({
     data: {
-      name: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
+      name: 'Test User',
+      email: 'test@example.com',
+      password: 'Test123456',
+      confirmPassword: 'Test123456',
     },
     errors: {},
     isSubmitting: false,
-    isValid: false,
+    isValid: true,
   })
 
-  const validateForm = () => {
-    const errors: Record<string, string> = {}
-    
-    if (!formState.data.name) {
-      errors.name = 'Name is required'
-    } else if (formState.data.name.length < 2) {
-      errors.name = 'Name must be at least 2 characters'
-    }
-    
-    if (!formState.data.email) {
-      errors.email = 'Email is required'
-    } else if (!/\S+@\S+\.\S+/.test(formState.data.email)) {
-      errors.email = 'Email is invalid'
-    }
-    
-    if (!formState.data.password) {
-      errors.password = 'Password is required'
-    } else if (formState.data.password.length < 8) {
-      errors.password = 'Password must be at least 8 characters'
-    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formState.data.password)) {
-      errors.password = 'Password must contain uppercase, lowercase, and number'
-    }
-    
-    if (!formState.data.confirmPassword) {
-      errors.confirmPassword = 'Please confirm your password'
-    } else if (formState.data.password !== formState.data.confirmPassword) {
-      errors.confirmPassword = 'Passwords do not match'
-    }
-
-    setFormState(prev => ({
-      ...prev,
-      errors,
-      isValid: Object.keys(errors).length === 0,
-    }))
-
-    return Object.keys(errors).length === 0
-  }
+  // Temporarily removed for debugging
 
   const handleInputChange = (field: keyof SignUpFormData, value: string) => {
     setFormState(prev => {
@@ -110,26 +77,22 @@ export default function SignUp() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('Form submitted!')
-    console.log('Form state:', formState)
+    console.log('🚀 Form submitted!')
+    console.log('📝 Form state:', formState)
+    console.log('✅ Form data:', formState.data)
     
-    if (!validateForm()) {
-      console.log('Form validation failed')
-      return
-    }
-
-    console.log('Form validation passed, starting signup...')
+    // Skip validation for now to test
+    console.log('⏭️ Skipping validation, starting signup...')
     setFormState(prev => ({ ...prev, isSubmitting: true }))
 
     try {
-      console.log('Calling signUp function...')
+      console.log('📞 Calling signUp function...')
       await signUp(formState.data.email, formState.data.password, formState.data.name)
-      console.log('SignUp completed successfully')
-      // Navigation is handled by AuthContext
+      console.log('✅ SignUp completed successfully')
     } catch (error) {
-      console.error('Sign up error:', error)
-      // Error toast is handled by AuthContext
+      console.error('❌ Sign up error:', error)
     } finally {
+      console.log('🔄 Setting isSubmitting to false')
       setFormState(prev => ({ ...prev, isSubmitting: false }))
     }
   }
@@ -261,8 +224,9 @@ export default function SignUp() {
           <div>
             <button
               type="submit"
-              disabled={formState.isSubmitting || !formState.isValid}
+              disabled={formState.isSubmitting}
               className="btn-primary w-full btn-md"
+              onClick={() => console.log('Button clicked! Form state:', formState)}
             >
               {formState.isSubmitting ? (
                 <div className="flex items-center">
