@@ -75,10 +75,18 @@ export default function AIAssistant() {
   // Initialize Anthropic on component mount
   useEffect(() => {
     const init = async () => {
+      const isProduction = process.env.NODE_ENV === 'production'
+      
+      // Always initialize the service
       const success = initializeAnthropicService()
       setIsAnthropicReady(success)
       
-      if (success && anthropicService) {
+      if (isProduction) {
+        // In production, skip API key validation and assume backend handles it
+        setApiKeyStatus('valid')
+        console.log('✅ Production mode: Using backend proxy for Anthropic API')
+      } else if (success && anthropicService) {
+        // In development, test the API key
         setApiKeyStatus('checking')
         try {
           const testResult = await anthropicService.testConnection()
@@ -91,9 +99,7 @@ export default function AIAssistant() {
           console.error('API Key test failed:', error)
         }
       } else {
-        // In production with backend proxy, missing frontend API key is expected
-        const isProduction = process.env.NODE_ENV === 'production'
-        setApiKeyStatus(isProduction ? 'valid' : 'missing')
+        setApiKeyStatus('missing')
       }
     }
     
