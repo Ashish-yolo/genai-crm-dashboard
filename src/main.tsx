@@ -8,7 +8,7 @@ console.log('🚀 Main.tsx is executing!')
 console.log('React version:', React.version)
 
 // Use DebugApp to test basic React functionality
-const useDebugMode = false // Set to true to enable debug mode
+const useDebugMode = true // Set to true to enable debug mode
 
 try {
   const rootElement = document.getElementById('root')
