@@ -19,11 +19,14 @@ import type {
   ConfluenceSearchResult,
 } from '@/types'
 
-// Supabase client configuration
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL!
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY!
+// Supabase client configuration (optional)
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Create Supabase client only if credentials are provided
+export const supabase = supabaseUrl && supabaseAnonKey 
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null
 
 // API base URL
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'
@@ -33,7 +36,17 @@ class ApiService {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const { data: { session } } = await supabase.auth.getSession()
+    let session = null
+    
+    // Only try to get session if Supabase is available
+    if (supabase) {
+      try {
+        const { data } = await supabase.auth.getSession()
+        session = data.session
+      } catch (error) {
+        console.warn('Supabase not available, continuing without auth:', error)
+      }
+    }
     
     const config: RequestInit = {
       headers: {
@@ -50,9 +63,11 @@ class ApiService {
     
     if (!response.ok) {
       if (response.status === 401) {
-        // Handle unauthorized - redirect to login
-        await supabase.auth.signOut()
-        window.location.href = '/auth/signin'
+        // Handle unauthorized - redirect to login only if Supabase is available
+        if (supabase) {
+          await supabase.auth.signOut()
+          window.location.href = '/auth/signin'
+        }
         throw new Error('Unauthorized')
       }
       
@@ -72,6 +87,10 @@ class ApiService {
 
   // Authentication API
   async signIn(email: string, password: string): Promise<ApiResponse<{ user: User; session: any }>> {
+    if (!supabase) {
+      throw new Error('Authentication not available - Supabase not configured')
+    }
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -92,6 +111,10 @@ class ApiService {
   }
 
   async signUp(email: string, password: string, name: string): Promise<ApiResponse<{ user: User }>> {
+    if (!supabase) {
+      throw new Error('Authentication not available - Supabase not configured')
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -116,12 +139,23 @@ class ApiService {
   }
 
   async signOut(): Promise<void> {
-    await supabase.auth.signOut()
+    if (supabase) {
+      await supabase.auth.signOut()
+    }
   }
 
   async getCurrentUser(): Promise<User | null> {
-    const { data: { user } } = await supabase.auth.getUser()
-    return user as User | null
+    if (!supabase) {
+      return null
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      return user as User | null
+    } catch (error) {
+      console.warn('Could not get current user:', error)
+      return null
+    }
   }
 
   // Dashboard API
