@@ -53,7 +53,7 @@ class AnthropicAIService {
     this.apiKey = apiKey || ''
     this.isProduction = process.env.NODE_ENV === 'production'
     this.baseUrl = this.isProduction 
-      ? (process.env.REACT_APP_API_BASE_URL || '') + '/api/ai/query'
+      ? 'https://genai-crm-dashboard.onrender.com/api/ai/query'
       : 'https://api.anthropic.com/v1/messages'
   }
 
@@ -256,7 +256,7 @@ Please analyze this query and provide a comprehensive response using the availab
     try {
       // In production, use dedicated test endpoint
       if (this.isProduction) {
-        const testUrl = (process.env.REACT_APP_API_BASE_URL || '') + '/api/ai/test'
+        const testUrl = 'https://genai-crm-dashboard.onrender.com/api/ai/test'
         const response = await fetch(testUrl)
         
         if (!response.ok) {
